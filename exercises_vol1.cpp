@@ -119,9 +119,7 @@ static_assert(std::is_same_v< PopBack<Vector<1,2,3,4>>::type , Vector<1,2,3> >);
 
 // Your code goes here:
 template <int R, typename V>
-struct RemoveFirst {
-
-};
+struct RemoveFirst {};
 
 template <int R, int X, int ...Xs>
 struct RemoveFirst<R, Vector<X, Xs...>> {
@@ -206,11 +204,24 @@ inline constexpr int length = Length<V>::value;
  */
 
 // Your code goes here:
+template <int X, int Y>
+struct LessThan { static constexpr bool value = X < Y; };
+
+template <typename V>
+struct Min {};
+
+template <int X1, int X2, int ...Xs>
+struct Min<Vector<X1, X2, Xs...>> {
+    constexpr static int value = Min< Vector< (X1 <= X2 ? X1 : X2), Xs... > >::value;
+};
+
+template <int X>
+struct Min<Vector<X>> { constexpr static int value = X; };
 // ^ Your code goes here
 
-// static_assert(Min<Vector<3,1,2>>::value == 1);
-// static_assert(Min<Vector<1,2,3>>::value == 1);
-// static_assert(Min<Vector<3,2,1>>::value == 1);
+static_assert(Min<Vector<3,1,2>>::value == 1);
+static_assert(Min<Vector<1,2,3>>::value == 1);
+static_assert(Min<Vector<3,2,1>>::value == 1);
 
 
 /**
@@ -218,11 +229,20 @@ inline constexpr int length = Length<V>::value;
  */
 
 // Your code goes here:
+template <typename V, int min = Min<V>::value>
+struct Sort {
+    using type = typename Prepend< min, typename Sort< typename RemoveFirst<min, V>::type >::type >::type;
+};
+
+template <int X>
+struct Sort<Vector<X>> {
+    using type = Vector<X>;
+};
 // ^ Your code goes here
 
-// static_assert(std::is_same_v<Sort<Vector<4,1,2,5,6,3>>::type, Vector<1,2,3,4,5,6>>);
-// static_assert(std::is_same_v<Sort<Vector<3,3,1,1,2,2>>::type, Vector<1,1,2,2,3,3>>);
-// static_assert(std::is_same_v<Sort<Vector<2,2,1,1,3,3>>::type, Vector<1,1,2,2,3,3>>);
+static_assert(std::is_same_v<Sort<Vector<4,1,2,5,6,3>>::type, Vector<1,2,3,4,5,6>>);
+static_assert(std::is_same_v<Sort<Vector<3,3,1,1,2,2>>::type, Vector<1,1,2,2,3,3>>);
+static_assert(std::is_same_v<Sort<Vector<2,2,1,1,3,3>>::type, Vector<1,1,2,2,3,3>>);
 
 
 /**
@@ -230,9 +250,29 @@ inline constexpr int length = Length<V>::value;
  */
 
 // Your code goes here:
+template <typename V>
+struct Uniq {};
+
+template <int X, int ...Xs>
+struct Uniq<Vector<X, Xs...>> {
+    using type = typename Prepend<X, typename Uniq< Vector<Xs...> >::type>::type;
+    // using type = typename Uniq<typename Prepend<X, Vector<Xs...>>::type >::type;
+};
+
+template <int X, int ...Xs>
+struct Uniq<Vector<X, X, Xs...>> {
+    using type = typename Uniq<typename Prepend<X, Vector<Xs...>>::type >::type;
+};
+
+template <>
+struct Uniq<Vector<>> {
+    using type = Vector<>;
+};
 // ^ Your code goes here
 
-// static_assert(std::is_same_v<Uniq<Vector<1,1,2,2,1,1>>::type, Vector<1,2,1>>);
+static_assert(std::is_same_v<Uniq<Vector<1,1,2,2,1,1>>::type, Vector<1,2,1>>);
+static_assert(std::is_same_v< Uniq<Vector<1,1,1,1,2,2,2,1,1,2,2,1,1>>::type, Vector<1,2,1,2,1> >);
+
 
 
 /**
@@ -240,9 +280,13 @@ inline constexpr int length = Length<V>::value;
  */
 
 // Your code goes here:
+template <int ...Xs>
+struct Set {
+    using type = typename Uniq< typename Sort<Vector<Xs...>>::type >::type;
+};
 // ^ Your code goes here
 
-// static_assert(std::is_same_v<Set<2,1,3,1,2,3>::type, Set<1,2,3>::type>);
+static_assert(std::is_same_v<Set<2,1,3,1,2,3>::type, Set<1,2,3>::type>);
 
 
 /**
@@ -250,9 +294,16 @@ inline constexpr int length = Length<V>::value;
  */
 
 // Your code goes here:
+template <typename V>
+struct SetFrom {};
+
+template <int ...Xs>
+struct SetFrom<Vector<Xs...>> {
+    using type = typename Set<Xs...>::type;
+};
 // ^ Your code goes here
 
-// static_assert(std::is_same_v<SetFrom<Vector<2,1,3,1,2,3>>::type, Set<1,2,3>::type>);
+static_assert(std::is_same_v<SetFrom<Vector<2,1,3,1,2,3>>::type, Set<1,2,3>::type>);
 
 
 /**
@@ -261,11 +312,28 @@ inline constexpr int length = Length<V>::value;
  */
 
 // Your code goes here:
+template <int N, typename V>
+struct Get {};
+
+template <int N>
+struct Get<N, Vector<>> { 
+    static constexpr char value[] = "ERROR: Index out of bounds"; 
+};
+
+template <int N, int X, int ...Xs>
+struct Get<N, Vector<X, Xs...>> {
+    static constexpr int value = Get<N-1, Vector<Xs...>>::value;
+};
+
+template <int X, int ...Xs>
+struct Get<0, Vector<X, Xs...>> {
+    static constexpr int value = X;
+};
 // ^ Your code goes here
 
-// static_assert(Get<0, Vector<0,1,2>>::value == 0);
-// static_assert(Get<1, Vector<0,1,2>>::value == 1);
-// static_assert(Get<2, Vector<0,1,2>>::value == 2);
+static_assert(Get<0, Vector<0,1,2>>::value == 0);
+static_assert(Get<1, Vector<0,1,2>>::value == 1);
+static_assert(Get<2, Vector<0,1,2>>::value == 2);
 // static_assert(Get<9, Vector<0,1,2>>::value == 2); // How good is your error message?
 
 
